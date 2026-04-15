@@ -46,55 +46,37 @@
 ## Architecture
 
 ```mermaid
-flowchart LR
-  subgraph SRC [Sources]
-    A1[emails.csv<br/>CMU Enron<br/>1.4 GB]
-    A2[Enron-Spam<br/>Metsis 2006<br/>33 716 labels]
-  end
+flowchart TD
+    A1[CMU Enron<br/>emails.csv · 1.4 GB]
+    A2[Enron-Spam<br/>Metsis · 33,716 labels]
 
-  subgraph ETL [ETL pipeline]
-    B1[02_load_staging]
-    B2[03_load_labels]
-    B3[04_build_dims]
-    B4[05_build_fact]
-    B5[06_infer_labels]
-  end
+    A1 --> ETL[ETL Pipeline<br/>01 init · 02 stage · 03 label<br/>04 dims · 05 fact · 06 infer]
+    A2 --> ETL
 
-  subgraph DW [SQLite DW]
-    C1[(stg_email_raw)]
-    C2[(stg_spam_labels)]
-    D1[(DimSender)]
-    D2[(DimDate)]
-    D3[(DimSubject)]
-    F1[(FactEmail)]
-    V1{{v_spam_overview}}
-    V2{{v_spam_by_domain}}
-    V3{{v_spam_by_weekday}}
-    V4{{v_top_senders}}
-  end
+    ETL --> DW[(SQLite DW<br/>Star schema<br/>FactEmail + 3 Dims<br/>4 analytical views)]
 
-  subgraph ML [ML layer]
-    M1[train_model.py]
-    M2[spam_model.pkl]
-  end
+    A2 --> ML[ML Trainer<br/>TF-IDF + MultinomialNB<br/>acc 0.988 · AUC 0.998]
+    ML --> MODEL[(spam_model.pkl)]
+    MODEL -. predicts labels .-> ETL
 
-  subgraph APP [Flask webapp]
-    W1[Dashboard]
-    W2[Bulk Scanner]
-    W3[Ask AI<br/>Claude text-to-SQL]
-    W4[Model Transparency]
-  end
+    DW --> APP[Flask Webapp]
+    MODEL --> APP
+    APP --> U[User Browser<br/>Dashboard · Scanner<br/>Ask AI · Model · Docs]
 
-  A1 --> B1 --> C1
-  A2 --> B2 --> C2
-  C1 --> B3 --> D1 & D2 & D3
-  C1 --> B4 --> F1
-  C2 --> B4
-  F1 --> V1 & V2 & V3 & V4
-  M2 --> B5 --> F1
-  A2 --> M1 --> M2
-  F1 & V1 & V2 & V3 & V4 & M2 --> W1 & W2 & W3 & W4
+    classDef src fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a;
+    classDef proc fill:#ede9fe,stroke:#8b5cf6,color:#4c1d95;
+    classDef store fill:#fef3c7,stroke:#f59e0b,color:#78350f;
+    classDef ml fill:#d1fae5,stroke:#10b981,color:#064e3b;
+    classDef app fill:#fee2e2,stroke:#ef4444,color:#7f1d1d;
+    class A1,A2 src;
+    class ETL proc;
+    class DW,MODEL store;
+    class ML ml;
+    class APP,U app;
 ```
+
+**Flow (left → right, top → bottom):**
+`emails.csv` and `Enron-Spam labels` → ETL pipeline → SQLite Star-Schema DW. In parallel, Enron-Spam also trains the ML model. The trained model predicts labels for unlabeled rows in the DW (`06_infer_labels`). Finally the Flask app reads both the DW and the model to serve the dashboard, scanner, and AI assistant.
 
 ## Star Schema
 
