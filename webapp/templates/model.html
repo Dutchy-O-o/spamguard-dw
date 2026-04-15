@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Model Transparency · SpamGuard DW{% endblock %}
+{% block main_class %}page{% endblock %}
+
+{% block content %}
+<section class="card full">
+  <h2>Model Transparency <span class="muted">· TF-IDF + MultinomialNB</span></h2>
+  <p class="muted">Training metrics, confusion matrix, feature importance and curves.</p>
+  <div id="model-loading" class="muted">Loading metrics...</div>
+</section>
+
+<div id="model-panel" class="hidden" style="display:grid; gap:20px;">
+  <section class="cards kpis" style="grid-template-columns: repeat(4,1fr)">
+    <div class="card kpi"><div class="kpi-label">Accuracy</div>     <div class="kpi-value" id="m-acc">—</div></div>
+    <div class="card kpi"><div class="kpi-label">F1 Spam</div>      <div class="kpi-value" id="m-f1s">—</div></div>
+    <div class="card kpi"><div class="kpi-label">ROC AUC</div>      <div class="kpi-value" id="m-auc">—</div></div>
+    <div class="card kpi"><div class="kpi-label"># Features</div>   <div class="kpi-value cyan" id="m-nf">—</div></div>
+  </section>
+
+  <section class="card">
+    <h2>Classification Report</h2>
+    <table class="data" id="m-report">
+      <thead><tr><th>Class</th><th>Precision</th><th>Recall</th><th>F1</th><th>Support</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>Confusion Matrix <span class="muted">· test set</span></h2>
+    <table class="cm">
+      <tr><td></td><td class="cm-h">Pred: HAM</td><td class="cm-h">Pred: SPAM</td></tr>
+      <tr><td class="cm-h">Actual HAM</td>
+          <td id="cm-tn" class="cm-cell good"></td>
+          <td id="cm-fp" class="cm-cell bad"></td></tr>
+      <tr><td class="cm-h">Actual SPAM</td>
+          <td id="cm-fn" class="cm-cell bad"></td>
+          <td id="cm-tp" class="cm-cell good"></td></tr>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>ROC Curve <span class="muted">· AUC: <span id="m-auc2">—</span></span></h2>
+    <canvas id="roc-canvas" width="700" height="280"></canvas>
+  </section>
+
+  <section class="card">
+    <h2>Precision-Recall Curve</h2>
+    <canvas id="pr-canvas" width="700" height="280"></canvas>
+  </section>
+
+  <section class="card">
+    <h2>Top Spam-indicative Features <span class="muted">· log-ratio</span></h2>
+    <div id="feat-spam" class="feats-list"></div>
+  </section>
+
+  <section class="card">
+    <h2>Top Ham-indicative Features</h2>
+    <div id="feat-ham" class="feats-list"></div>
+  </section>
+
+  <section class="card">
+    <h2>Word Clouds</h2>
+    <div class="wc-grid">
+      <div>
+        <h3 style="color:var(--red)">Spam Terms</h3>
+        <div id="wc-spam" class="wordcloud"></div>
+      </div>
+      <div>
+        <h3 style="color:var(--green)">Ham Terms</h3>
+        <div id="wc-ham" class="wordcloud"></div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='model.js') }}"></script>
+{% endblock %}

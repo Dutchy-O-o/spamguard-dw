@@ -1,0 +1,16 @@
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = [".venv", "SpamData", "notebooks", "models", "db"]
+
+[tool.ruff.lint]
+# Conservative: pyflakes (F) + a subset of pycodestyle (E) + pyupgrade (UP).
+# Skip stylistic noise that doesn't affect correctness.
+select = ["E", "F", "W", "UP"]
+ignore = [
+    "E501",  # line too long — handled by formatter, not blocking
+    "E701",  # multiple statements on one line (used intentionally for compact route handlers)
+    "E702",  # multiple statements on one line (semicolon)
+    "E741",  # ambiguous variable name (l, j, etc. are fine in tight loops)
+    "UP007", # `X | Y` vs Optional — both acceptable
+]

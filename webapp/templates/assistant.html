@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Ask AI · SpamGuard DW{% endblock %}
+{% block main_class %}page{% endblock %}
+
+{% block content %}
+<section class="card full chat-card">
+  <h2>Ask AI <span class="muted">· ask the data warehouse in natural language</span>
+    <span class="backend-badge {% if ai_backend == 'offline' %}offline{% endif %}">
+      {% if ai_backend == 'claude' %}Claude text-to-SQL{% else %}offline router{% endif %}
+    </span>
+  </h2>
+
+  <div id="suggestions" class="suggestions">
+    <button class="chip">Which domain sends the most spam?</button>
+    <button class="chip">Weekend vs weekday — which is more spammy?</button>
+    <button class="chip">Show the top 5 most active senders</button>
+    <button class="chip">What is the overall spam rate?</button>
+    <button class="chip">Stats for enron.com</button>
+    <button class="chip">Which day has the most emails?</button>
+  </div>
+
+  <div id="chat" class="chat-log"></div>
+
+  <div class="chat-input">
+    <input id="ask-input" type="text" placeholder="Ask something... (e.g. 'which domain is the spammiest?')" autocomplete="off" />
+    <button id="ask-btn" class="primary">Ask</button>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='assistant.js') }}"></script>
+{% endblock %}

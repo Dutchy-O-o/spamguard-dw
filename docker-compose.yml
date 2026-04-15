@@ -1,0 +1,13 @@
+services:
+  spamguard:
+    build: .
+    container_name: spamguard-dw
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./db:/app/db
+      - ./models:/app/models
+      - ./SpamData:/app/SpamData
+    env_file:
+      - .env
+    restart: unless-stopped

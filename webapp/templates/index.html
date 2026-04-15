@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · SpamGuard DW{% endblock %}
+
+{% block content %}
+  <!-- KPIS -->
+  <section class="cards kpis">
+    <div class="card kpi"><div class="kpi-label">Total Emails</div>   <div class="kpi-value loading" id="kpi-total"></div></div>
+    <div class="card kpi"><div class="kpi-label">Spam</div>           <div class="kpi-value red loading" id="kpi-spam"></div></div>
+    <div class="card kpi"><div class="kpi-label">Ham</div>            <div class="kpi-value green loading" id="kpi-ham"></div></div>
+    <div class="card kpi"><div class="kpi-label">Unlabeled</div>      <div class="kpi-value cyan loading" id="kpi-unlab"></div></div>
+    <div class="card kpi"><div class="kpi-label">Spam Rate</div>      <div class="kpi-value loading" id="kpi-rate"></div></div>
+    <div class="card kpi"><div class="kpi-label">Avg Words</div>      <div class="kpi-value loading" id="kpi-words"></div></div>
+  </section>
+
+  <section class="card full">
+    <h2>Spam Trend <span class="muted">· monthly 1999–2003</span></h2>
+    <canvas id="trend-canvas" width="1000" height="220"></canvas>
+  </section>
+
+  <section class="card full">
+    <h2>Anomaly Feed <span class="muted">· auto-detected</span></h2>
+    <div id="anomaly-list" class="anomalies"></div>
+  </section>
+
+  <section class="card">
+    <h2>Top Domains <span class="muted">by email count</span></h2>
+    <table class="data" id="tbl-domains">
+      <thead><tr><th>Domain</th><th>Emails</th><th>Spam</th><th>Spam %</th><th>Zone</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>Weekday Distribution</h2>
+    <div id="weekday-bars" class="bars"></div>
+  </section>
+
+  <section class="card full">
+    <h2>Top Senders</h2>
+    <table class="data" id="tbl-senders">
+      <thead><tr><th>Sender</th><th>Domain</th><th>Emails</th><th>Spam</th><th>Spam %</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section class="card full checker">
+    <h2>Spam Checker <span class="muted">· live</span></h2>
+    <p class="muted">Enter a subject and body — the model will score the spam probability in real time.</p>
+
+    <div class="checker-grid">
+      <div>
+        <label>Subject</label>
+        <input id="in-subject" type="text" placeholder="Re: Urgent — win a prize!" />
+
+        <label>Body</label>
+        <textarea id="in-body" rows="7" placeholder="Paste the email body here..."></textarea>
+
+        <button id="btn-check" class="primary">Check</button>
+      </div>
+
+      <div id="result" class="result empty">
+        <div class="muted">The result will appear here.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DRILL-DOWN MODAL -->
+  <div id="dd-modal" class="modal hidden">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-panel">
+      <button class="modal-close" data-close>&times;</button>
+      <div id="dd-body"><div class="muted">Loading...</div></div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+{% endblock %}
