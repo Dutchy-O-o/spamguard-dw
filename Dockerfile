@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# DB ve model volume olarak mount edilir — imaj icine kopyalanmaz
+# DB and model are mounted as volumes — not baked into the image
 ENV PYTHONUNBUFFERED=1 \
     FLASK_APP=webapp.app
 

@@ -1,0 +1,58 @@
+# Mirror of .gitignore plus build-time junk.
+# Everything here is excluded from `docker build` context.
+
+# --- large data (mounted as volumes at runtime) ---
+emails.csv
+SpamData/
+*.tar.gz
+db/*.db
+db/*.db-journal
+db/*.db-wal
+db/*.db-shm
+
+# --- ML artifacts (mounted as volume) ---
+models/*.pkl
+models/*.joblib
+
+# --- secrets ---
+.env
+.env.local
+*.key
+
+# --- python caches & local venv ---
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# --- notebooks state ---
+.ipynb_checkpoints/
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- VCS & tooling ---
+.git/
+.gitignore
+.github/
+.claude/
+_docker_images.txt
+
+# --- docs & misc not needed in image ---
+notebooks/
+TestReport.pdf
+docs/
+malicious_test.csv
+test_sample.csv
