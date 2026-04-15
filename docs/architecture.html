@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>SpamGuard DW — Architecture Diagrams</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px 60px;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(59,130,246,0.15), transparent 60%),
+      radial-gradient(1200px 600px at 90% 10%, rgba(139,92,246,0.15), transparent 60%),
+      #0a0e1a;
+    color: #f1f5f9;
+    font-family: "Inter","Segoe UI",system-ui,sans-serif;
+    min-height: 100vh;
+  }
+  header { display: flex; align-items: center; gap: 16px; margin-bottom: 40px;
+    padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .logo { width: 48px; height: 48px; border-radius: 12px;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    display: grid; place-items: center; font-weight: 800; }
+  h1 { margin: 0; font-size: 24px; }
+  h2 { color: #3b82f6; font-size: 14px; text-transform: uppercase;
+    letter-spacing: 1px; margin: 40px 0 20px; }
+  .muted { color: #94a3b8; font-size: 13px; }
+
+  section.card {
+    background: rgba(17,24,39,0.7); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px; padding: 24px; margin-bottom: 24px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  }
+  .mermaid { background: white; border-radius: 10px; padding: 24px;
+    text-align: center; overflow-x: auto; }
+
+  .toolbar { display: flex; gap: 10px; margin-bottom: 12px; }
+  button.btn { padding: 8px 16px; border-radius: 8px; font-size: 12px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+    color: #f1f5f9; cursor: pointer; font-weight: 500; }
+  button.btn:hover { border-color: #3b82f6; color: #3b82f6; }
+  footer { text-align: center; color: #64748b; font-size: 11px; padding: 30px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">SG</div>
+  <div>
+    <h1>SpamGuard DW — Architecture Diagrams</h1>
+    <div class="muted">Enron Spam Detection · Data Warehouse + ML · Dokuz Eylul University</div>
+  </div>
+</header>
+
+<section class="card">
+  <h2>1. System Architecture (ETL → DW → ML → App)</h2>
+  <p class="muted">End-to-end data flow: two sources land in staging, are transformed into the dimensional model, a model is trained on them, and the web app consumes both the DW and the model.</p>
+  <div class="toolbar">
+    <button class="btn" onclick="downloadSvg('arch-1','system-architecture.svg')">⬇ Download SVG</button>
+    <button class="btn" onclick="downloadPng('arch-1','system-architecture.png')">⬇ Download PNG</button>
+  </div>
+  <div class="mermaid" id="arch-1">
+flowchart TD
+    A1[CMU Enron<br/>emails.csv · 1.4 GB]
+    A2[Enron-Spam<br/>Metsis · 33 716 labels]
+
+    A1 --> ETL[ETL Pipeline<br/>01 init · 02 stage · 03 label<br/>04 dims · 05 fact · 06 infer]
+    A2 --> ETL
+
+    ETL --> DW[(SQLite DW<br/>star schema<br/>FactEmail + 3 Dims<br/>4 analytical views)]
+
+    A2 --> ML[ML Trainer<br/>TF-IDF + MultinomialNB<br/>acc 0.988 · AUC 0.999]
+    ML --> MODEL[(spam_model.pkl)]
+    MODEL --> ETL
+
+    DW --> APP[Flask Webapp]
+    MODEL --> APP
+    APP --> U[User Browser<br/>Dashboard · Scanner<br/>Ask AI · Model · Docs]
+
+    style A1  fill:#dbeafe,stroke:#3b82f6
+    style A2  fill:#dbeafe,stroke:#3b82f6
+    style ETL fill:#ede9fe,stroke:#8b5cf6
+    style DW  fill:#fef3c7,stroke:#f59e0b
+    style ML  fill:#d1fae5,stroke:#10b981
+    style MODEL fill:#d1fae5,stroke:#10b981
+    style APP fill:#fee2e2,stroke:#ef4444
+    style U   fill:#fff,stroke:#64748b
+  </div>
+</section>
+
+<section class="card">
+  <h2>2. Star Schema (Dimensional Model)</h2>
+  <p class="muted">Classic dimensional modeling: one fact table, three dimensions. Measures live on the fact; slowly-changing attributes live on the dims.</p>
+  <div class="toolbar">
+    <button class="btn" onclick="downloadSvg('arch-2','star-schema.svg')">⬇ Download SVG</button>
+    <button class="btn" onclick="downloadPng('arch-2','star-schema.png')">⬇ Download PNG</button>
+  </div>
+  <div class="mermaid" id="arch-2">
+erDiagram
+    FACTEMAIL }o--|| DIMSENDER  : sender_key
+    FACTEMAIL }o--|| DIMDATE    : date_key
+    FACTEMAIL }o--|| DIMSUBJECT : subject_key
+
+    FACTEMAIL {
+        int email_key PK
+        int sender_key FK
+        int date_key FK
+        int subject_key FK
+        int recipient_count
+        int body_word_count
+        int link_count
+        int is_spam
+        string label_source
+    }
+    DIMSENDER {
+        int sender_key PK
+        string email_address
+        string domain
+        int is_internal
+        int email_count
+    }
+    DIMDATE {
+        int date_key PK
+        string full_date
+        int year
+        int month
+        int day_of_week
+        int is_weekend
+    }
+    DIMSUBJECT {
+        int subject_key PK
+        string subject_text
+        int is_reply
+        int is_forward
+        int has_urgent_keyword
+        int has_money_keyword
+        float uppercase_ratio
+    }
+  </div>
+</section>
+
+<section class="card">
+  <h2>3. ML Pipeline</h2>
+  <p class="muted">TF-IDF + Multinomial Naive Bayes. Training source: 33 716 labeled Enron-Spam emails (Metsis et al. 2006).</p>
+  <div class="toolbar">
+    <button class="btn" onclick="downloadSvg('arch-3','ml-pipeline.svg')">⬇ Download SVG</button>
+    <button class="btn" onclick="downloadPng('arch-3','ml-pipeline.png')">⬇ Download PNG</button>
+  </div>
+  <div class="mermaid" id="arch-3">
+flowchart LR
+    A["33 716 labeled txt<br/>enron1..6 spam ham"] --> B[load_from_folders]
+    B --> C["TfidfVectorizer<br/>ngram 1-2<br/>20 000 features"]
+    C --> D["train_test_split<br/>80 / 20 stratified"]
+    D --> E["MultinomialNB<br/>alpha 0.1"]
+    E --> F["Metrics<br/>acc 0.988<br/>F1 0.989<br/>AUC 0.999"]
+    E --> G[("spam_model.pkl")]
+    G --> H["Flask APIs<br/>check · explain · scan"]
+    G --> I["06 infer labels<br/>FactEmail is_spam"]
+
+    style G fill:#d1fae5,stroke:#10b981
+    style F fill:#fef3c7,stroke:#f59e0b
+  </div>
+</section>
+
+<section class="card">
+  <h2>4. Request Flow (Ask AI — Claude text-to-SQL)</h2>
+  <p class="muted">User question → sent to Claude with full schema context → safety filter → SQL executes on SQLite → Claude summarizes the result in English.</p>
+  <div class="toolbar">
+    <button class="btn" onclick="downloadSvg('arch-4','ask-ai-flow.svg')">⬇ Download SVG</button>
+    <button class="btn" onclick="downloadPng('arch-4','ask-ai-flow.png')">⬇ Download PNG</button>
+  </div>
+  <div class="mermaid" id="arch-4">
+sequenceDiagram
+    participant U as User
+    participant F as Flask
+    participant C as Claude API
+    participant D as SQLite DW
+
+    U->>F: POST /api/ask (question)
+    F->>C: system prompt + schema + question
+    C-->>F: JSON sql + explanation
+    F->>F: SQL safety filter
+    F->>D: execute SELECT
+    D-->>F: rows
+    F->>C: request summary (results + question)
+    C-->>F: English summary
+    F-->>U: text + table + sql
+  </div>
+</section>
+
+<footer>
+  SpamGuard DW · 4 diagram · mermaid-js · generate to static files with: mmdc -i architecture.md -o out.svg
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#3b82f6',
+      primaryTextColor: '#0f172a',
+      primaryBorderColor: '#3b82f6',
+      lineColor: '#64748b',
+      fontFamily: 'Inter, Segoe UI, sans-serif',
+      fontSize: '13px',
+    }
+  });
+
+  async function downloadSvg(mermaidId, name) {
+    const svg = document.querySelector(`#${mermaidId} svg`);
+    if (!svg) { alert('Diagram not yet rendered'); return; }
+    const xml = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([xml], { type: 'image/svg+xml' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  }
+
+  async function downloadPng(mermaidId, name) {
+    const svg = document.querySelector(`#${mermaidId} svg`);
+    if (!svg) { alert('Diagram not yet rendered'); return; }
+    const xml = new XMLSerializer().serializeToString(svg);
+    const b64 = btoa(unescape(encodeURIComponent(xml)));
+    const img = new Image();
+    img.onload = () => {
+      const w = img.width * 2, h = img.height * 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = 'white'; ctx.fillRect(0,0,w,h);
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(blob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = name; a.click();
+      }, 'image/png');
+    };
+    img.src = 'data:image/svg+xml;base64,' + b64;
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}API Docs · SpamGuard DW{% endblock %}
+{% block main_class %}page{% endblock %}
+{% block content %}
+<section class="card full">
+  <h2>API Documentation <span class="muted">· Swagger UI</span></h2>
+  <p class="muted">OpenAPI 3.0 spec: <a href="/openapi.json" style="color:var(--accent)">/openapi.json</a></p>
+</section>
+
+<div class="card full">
+  <div id="swagger-ui"></div>
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+<script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+<script>
+  SwaggerUIBundle({
+    url: "/openapi.json",
+    dom_id: "#swagger-ui",
+    presets: [SwaggerUIBundle.presets.apis],
+    layout: "BaseLayout",
+    docExpansion: "list",
+  });
+</script>
+
+<style>
+  /* Swagger dark override */
+  #swagger-ui { background: transparent; color: var(--text); }
+
+  .swagger-ui, .swagger-ui .info, .swagger-ui .info *,
+  .swagger-ui .opblock-tag, .swagger-ui .opblock .opblock-summary,
+  .swagger-ui .opblock-description-wrapper, .swagger-ui .opblock-summary-description,
+  .swagger-ui .opblock-section-header, .swagger-ui .tab li,
+  .swagger-ui .parameters-col_description, .swagger-ui table thead tr td,
+  .swagger-ui table thead tr th, .swagger-ui .response-col_description,
+  .swagger-ui .scheme-container, .swagger-ui .responses-inner,
+  .swagger-ui .model-title, .swagger-ui .model, .swagger-ui label,
+  .swagger-ui p, .swagger-ui h1, .swagger-ui h2, .swagger-ui h3,
+  .swagger-ui h4, .swagger-ui h5 {
+    color: var(--text) !important;
+  }
+  .swagger-ui .info .title small { color: var(--text2) !important; }
+  .swagger-ui .opblock { background: var(--surface2) !important;
+    border: 1px solid var(--border) !important; box-shadow: none !important;
+    margin: 0 0 10px; border-radius: 10px; }
+  .swagger-ui .opblock .opblock-summary { border-bottom-color: var(--border) !important; }
+  .swagger-ui .opblock-tag { background: transparent !important;
+    border-bottom: 1px solid var(--border) !important; }
+  .swagger-ui .opblock.opblock-get    .opblock-summary-method { background: var(--accent); }
+  .swagger-ui .opblock.opblock-post   .opblock-summary-method { background: var(--green); }
+  .swagger-ui .opblock.opblock-delete .opblock-summary-method { background: var(--red); }
+  .swagger-ui .scheme-container { background: var(--surface2) !important;
+    border: 1px solid var(--border) !important; box-shadow: none !important; }
+  .swagger-ui select, .swagger-ui input { background: var(--surface) !important;
+    color: var(--text) !important; border: 1px solid var(--border) !important; }
+  .swagger-ui .btn { background: var(--accent) !important; color: white !important;
+    border-color: var(--accent) !important; }
+  .swagger-ui .response-col_status, .swagger-ui .response-col_links { color: var(--text) !important; }
+  .swagger-ui .highlight-code, .swagger-ui .model-box, .swagger-ui .renderedMarkdown,
+  .swagger-ui .microlight { background: var(--surface) !important; color: var(--text) !important;
+    border-radius: 6px; padding: 6px 10px; }
+  .swagger-ui svg { fill: var(--text) !important; }
+  .swagger-ui .topbar { display: none; }
+</style>
+{% endblock %}

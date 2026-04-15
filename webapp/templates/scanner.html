@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Bulk Scanner · SpamGuard DW{% endblock %}
+{% block main_class %}page{% endblock %}
+
+{% block content %}
+<section class="card full">
+  <h2>Bulk Scanner <span class="muted">· CSV upload</span></h2>
+  <p class="muted">
+    Upload a CSV of emails — the model scores each row and builds a risk report.
+    <br>Expected columns: <code>subject</code> and/or <code>body</code>/<code>message</code>/<code>content</code>.
+  </p>
+
+  <div id="drop-zone" class="dropzone">
+    <div class="dz-icon">⬆</div>
+    <div><b>Drop your CSV here</b> or click to browse</div>
+    <div class="muted" style="font-size:12px; margin-top:6px">max 5000 rows</div>
+    <input id="file-input" type="file" accept=".csv" hidden />
+  </div>
+
+  <div id="scan-status" class="muted" style="margin-top:10px"></div>
+</section>
+
+<section id="scan-results" class="hidden">
+  <section class="cards kpis">
+    <div class="card kpi"><div class="kpi-label">Scanned</div> <div class="kpi-value"      id="sk-total">—</div></div>
+    <div class="card kpi"><div class="kpi-label">Spam</div>    <div class="kpi-value red"  id="sk-spam">—</div></div>
+    <div class="card kpi"><div class="kpi-label">Ham</div>     <div class="kpi-value green" id="sk-ham">—</div></div>
+    <div class="card kpi"><div class="kpi-label">Spam Rate</div><div class="kpi-value"      id="sk-rate">—</div></div>
+  </section>
+
+  <section class="card">
+    <h2>Probability Distribution</h2>
+    <div id="dist-bars" class="bars"></div>
+  </section>
+
+  <section class="card">
+    <h2>Top Risky <span class="muted">(highest spam probability)</span></h2>
+    <table class="data" id="tbl-risky">
+      <thead><tr><th>#</th><th>Subject</th><th>Body preview</th><th>Spam %</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <div class="card full">
+    <div class="btn-row">
+      <button id="btn-download" class="ghost">⬇ Download scored CSV</button>
+      <button id="btn-pdf"      class="primary">⬇ Download Executive Report (PDF)</button>
+    </div>
+  </div>
+</section>
+
+<section class="card full">
+  <h2>Recent Scans <span class="muted">· history</span></h2>
+  <table class="data" id="tbl-scan-history">
+    <thead><tr><th>#</th><th>File</th><th>Total</th><th>Spam</th><th>Ham</th><th>Spam %</th><th>Date</th></tr></thead>
+    <tbody><tr><td colspan="7" class="muted">loading...</td></tr></tbody>
+  </table>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='scanner.js') }}"></script>
+{% endblock %}

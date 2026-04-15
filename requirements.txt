@@ -1,0 +1,9 @@
+flask>=3.0
+scikit-learn>=1.4
+joblib
+anthropic>=0.40
+python-dotenv
+reportlab
+matplotlib
+numpy
+pytest

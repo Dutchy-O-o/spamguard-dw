@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>{% block title %}SpamGuard DW{% endblock %}</title>
+
+<!-- Prevent FOUC: set theme BEFORE stylesheet loads. The no-anim class
+     blocks any initial transition so the first paint lands on the final look. -->
+<script>
+  (function () {
+    var t = localStorage.getItem("sg-theme") || "dark";
+    var h = document.documentElement;
+    h.setAttribute("data-theme", t);
+    h.classList.add("no-anim");
+    window.addEventListener("load", function () {
+      requestAnimationFrame(function () { h.classList.remove("no-anim"); });
+    });
+  })();
+</script>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+<header class="nav">
+  <div class="brand">
+    <span class="logo">SG</span>
+    <div>
+      <h1>SpamGuard <span class="muted">DW</span></h1>
+      <p class="muted">Enron Email Warehouse · Spam Detection</p>
+    </div>
+  </div>
+
+  <nav class="tabs">
+    <a href="{{ url_for('index') }}"     class="tab {% if active_tab == 'dashboard' %}active{% endif %}">Dashboard</a>
+    <a href="{{ url_for('scanner') }}"   class="tab {% if active_tab == 'scanner'   %}active{% endif %}">Bulk Scanner</a>
+    <a href="{{ url_for('assistant') }}" class="tab {% if active_tab == 'assistant' %}active{% endif %}">Ask AI</a>
+    <a href="{{ url_for('admin_model') }}" class="tab-ghost">Model</a>
+    <a href="{{ url_for('docs') }}"        class="tab-ghost">API</a>
+  </nav>
+
+  <div class="nav-right">
+    <span id="model-pill" class="pill">model: ...</span>
+    <button id="theme-toggle" title="Toggle light/dark">
+      <span class="moon">🌙</span><span class="sun">☀</span>
+    </button>
+  </div>
+</header>
+
+<main class="{% block main_class %}grid{% endblock %}">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="muted">
+  SpamGuard DW · SQLite + Flask · TF-IDF + MultinomialNB
+</footer>
+
+<script src="{{ url_for('static', filename='common.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,47 @@
+# secrets
+.env
+.env.local
+*.key
+
+# large data files (regenerate with ETL)
+emails.csv
+SpamData/
+*.tar.gz
+db/*.db
+db/*.db-journal
+db/*.db-wal
+db/*.db-shm
+
+# ML artifacts (regenerate with ml/train_model.py)
+models/*.pkl
+models/*.joblib
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# notebooks state
+.ipynb_checkpoints/
+
+# ide / os
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# tooling state
+.claude/
+_docker_images.txt
