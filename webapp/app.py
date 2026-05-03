@@ -489,6 +489,26 @@ def _extract_json(raw: str) -> dict | None:
     return None
 
 
+def _msg_text(msg) -> str:
+    """Extract text from an Anthropic Message robustly across SDK shapes."""
+    content = getattr(msg, "content", None)
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for b in content:
+            if isinstance(b, str):
+                parts.append(b)
+                continue
+            t = getattr(b, "text", None)
+            if t is not None and getattr(b, "type", "text") == "text":
+                parts.append(t)
+        return "".join(parts)
+    return str(content)
+
+
 def claude_ask(question: str) -> dict:
     """LLM -> SQL -> execute -> LLM summarize."""
     assert _anthropic_client is not None
@@ -500,7 +520,7 @@ def claude_ask(question: str) -> dict:
         messages=[{"role": "user",
                    "content": f"Question: {question}\n\nReturn only JSON, no markdown fences."}],
     )
-    raw = "".join(b.text for b in sql_msg.content if getattr(b, "type", "") == "text")
+    raw = _msg_text(sql_msg)
 
     j = _extract_json(raw)
     if j is None:
@@ -551,7 +571,7 @@ def claude_ask(question: str) -> dict:
         system=sum_system,
         messages=[{"role": "user", "content": sum_user}],
     )
-    summary = "".join(b.text for b in sum_msg.content if getattr(b, "type","") == "text").strip()
+    summary = _msg_text(sum_msg).strip()
 
     return {
         "text": summary or j.get("explanation") or "",
@@ -726,11 +746,22 @@ def api_report():
 # ============================================================
 # PER-PREDICTION EXPLANATION (top contributing words)
 # ============================================================
+def _explain_components():
+    """Return (vec, clf) suitable for `feature_log_prob_`-based explanations.
+
+    The serving model wraps MultinomialNB in CalibratedClassifierCV (for
+    well-calibrated probabilities), which hides `feature_log_prob_`. The
+    trainer bundles an uncalibrated NB pipeline as `explain_pipe_` for this.
+    Falls back to the main pipeline for older models that don't have it.
+    """
+    explain_pipe = getattr(_model, "explain_pipe_", _model)
+    return explain_pipe.named_steps["tfidf"], explain_pipe.named_steps["clf"]
+
+
 def _top_contributors(text: str, k: int = 10) -> list[dict]:
     """Rank the words present in the message by log-likelihood weight."""
     if _model is None: return []
-    vec = _model.named_steps["tfidf"]
-    clf = _model.named_steps["clf"]
+    vec, clf = _explain_components()
     x = vec.transform([text])
     feats = vec.get_feature_names_out()
     coo = x.tocoo()
@@ -866,8 +897,7 @@ def api_anomalies(): return jsonify(_anomalies_payload())
 def _wordcloud_payload():
     if _model is None:
         return jsonify({"error": "Model not loaded."}), 503
-    vec = _model.named_steps["tfidf"]
-    clf = _model.named_steps["clf"]
+    vec, clf = _explain_components()
     feats = vec.get_feature_names_out()
     diff = clf.feature_log_prob_[1] - clf.feature_log_prob_[0]
 
@@ -923,8 +953,7 @@ def _model_metrics_payload():
     roc_auc = float(auc(fpr, tpr))
 
     # feature importance
-    vec = _model.named_steps["tfidf"]
-    clf = _model.named_steps["clf"]
+    vec, clf = _explain_components()
     diff = clf.feature_log_prob_[1] - clf.feature_log_prob_[0]
     feats = vec.get_feature_names_out()
     top_spam = diff.argsort()[::-1][:25]
@@ -1024,24 +1053,296 @@ def api_feedback():
 # ============================================================
 # SWAGGER / OPENAPI
 # ============================================================
+def _json_resp(example: dict | None = None, description: str = "Successful response") -> dict:
+    schema: dict = {"type": "object"}
+    if example is not None:
+        schema["example"] = example
+    return {"description": description,
+            "content": {"application/json": {"schema": schema}}}
+
+
+_SUBJECT_BODY_BODY = {
+    "required": True,
+    "content": {"application/json": {"schema": {
+        "type": "object",
+        "required": ["subject", "body"],
+        "properties": {
+            "subject": {"type": "string", "example": "Re: Urgent — win a prize!"},
+            "body":    {"type": "string", "example": "CONGRATULATIONS! Click here to claim your $1000 prize now."},
+        },
+    }}},
+}
+
 OPENAPI = {
     "openapi": "3.0.0",
-    "info": {"title": "SpamGuard DW API", "version": "1.0.0",
-             "description": "Enron Spam Detection Data Warehouse API"},
+    "info": {
+        "title": "SpamGuard DW API",
+        "version": "1.0.0",
+        "description": (
+            "REST API for the SpamGuard Data Warehouse — Enron-Spam corpus, "
+            "TF-IDF + calibrated MultinomialNB, and Claude text-to-SQL assistant. "
+            "All endpoints return JSON unless noted."
+        ),
+        "contact": {"name": "Emre Akkaya · Dokuz Eylul University"},
+    },
+    "servers": [{"url": "/", "description": "Local Flask server"}],
+    "tags": [
+        {"name": "Prediction", "description": "Live spam scoring and explanation"},
+        {"name": "Bulk",       "description": "CSV scan, history and PDF report"},
+        {"name": "Analytics",  "description": "Data-warehouse insights"},
+        {"name": "Assistant",  "description": "Natural-language SQL via Claude"},
+        {"name": "Model",      "description": "Model transparency"},
+        {"name": "Feedback",   "description": "User feedback loop"},
+    ],
     "paths": {
-        "/api/stats":         {"get":  {"summary": "Overview KPIs + Top domains/senders + weekday"}},
-        "/api/check":         {"post": {"summary": "Live spam check for a single subject/body"}},
-        "/api/explain":       {"post": {"summary": "Top contributing words for a prediction"}},
-        "/api/scan":          {"post": {"summary": "Bulk CSV scan (multipart upload)"}},
-        "/api/ask":           {"post": {"summary": "Natural-language question (Claude or offline)"}},
-        "/api/drilldown":     {"get":  {"summary": "Domain or sender detail"}},
-        "/api/trend":         {"get":  {"summary": "Monthly time-series (spam rate)"}},
-        "/api/anomalies":     {"get":  {"summary": "Auto-generated anomaly feed"}},
-        "/api/wordcloud":     {"get":  {"summary": "Top spam/ham words from the model"}},
-        "/api/model-metrics": {"get":  {"summary": "Confusion matrix, PR/ROC, top features"}},
-        "/api/scan-history":  {"get":  {"summary": "Recent 20 bulk scans"}},
-        "/api/feedback":      {"post": {"summary": "User feedback on a prediction"}},
-        "/api/report":        {"post": {"summary": "Executive PDF report for a scan"}},
+        # --------------------------- Prediction ---------------------------
+        "/api/check": {
+            "post": {
+                "tags": ["Prediction"],
+                "summary": "Live spam check for a single subject/body",
+                "description": "Returns the calibrated spam probability plus engineered features and a verdict label.",
+                "requestBody": _SUBJECT_BODY_BODY,
+                "responses": {
+                    "200": _json_resp({
+                        "spam_probability": 0.9842,
+                        "ham_probability":  0.0158,
+                        "verdict": "SPAM (high confidence)",
+                        "tone": "danger",
+                        "features": {"char_count": 64, "word_count": 12, "link_count": 1,
+                                     "has_urgent": True, "has_money": True, "upper_ratio": 0.118},
+                    }),
+                    "400": _json_resp({"error": "Subject or body required."}, "Empty input"),
+                    "503": _json_resp({"error": "Model not loaded."}, "Model file missing"),
+                },
+            },
+        },
+        "/api/explain": {
+            "post": {
+                "tags": ["Prediction"],
+                "summary": "Top contributing words for a prediction",
+                "description": "Ranks the top tokens that pushed the score toward spam or ham. Weights are log P(w|spam) - log P(w|ham).",
+                "requestBody": _SUBJECT_BODY_BODY,
+                "responses": {
+                    "200": _json_resp({
+                        "spam_probability": 0.9842,
+                        "top_contributors": [
+                            {"word": "prize",       "weight": 4.21, "tfidf": 0.32, "impact": 1.34},
+                            {"word": "click here",  "weight": 3.88, "tfidf": 0.28, "impact": 1.09},
+                        ],
+                    }),
+                },
+            },
+        },
+
+        # --------------------------- Bulk ---------------------------
+        "/api/scan": {
+            "post": {
+                "tags": ["Bulk"],
+                "summary": "Bulk CSV scan (multipart upload)",
+                "description": "Upload a CSV with `subject` and `body` columns (max 5000 rows). Returns per-row scores, top risky list and a probability histogram.",
+                "requestBody": {
+                    "required": True,
+                    "content": {"multipart/form-data": {"schema": {
+                        "type": "object",
+                        "required": ["csv"],
+                        "properties": {"csv": {"type": "string", "format": "binary",
+                                               "description": "CSV file with `subject,body` header"}},
+                    }}},
+                },
+                "responses": {
+                    "200": _json_resp({
+                        "total": 40, "spam": 18, "ham": 22, "spam_rate_pct": 45.0,
+                        "filename": "demo_scan.csv",
+                        "distribution": {"labels": ["0.0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9"],
+                                          "counts": [20,0,0,0,2,1,0,0,0,17]},
+                        "top_risky": [{"idx": 4, "subject": "WON $1,000,000", "body_preview": "...",
+                                        "spam_probability": 0.994, "is_spam": 1}],
+                        "all_scored": [],
+                    }),
+                    "400": _json_resp({"error": "csv field is empty."}),
+                },
+            },
+        },
+        "/api/scan-history": {
+            "get": {
+                "tags": ["Bulk"],
+                "summary": "Recent 20 bulk scans",
+                "responses": {"200": _json_resp({
+                    "history": [{"scan_id": 12, "filename": "demo_scan.csv", "total": 40,
+                                 "spam": 18, "ham": 22, "spam_rate": 45.0,
+                                 "created_at": "2026-05-03 19:30:01"}],
+                })},
+            },
+        },
+        "/api/report": {
+            "post": {
+                "tags": ["Bulk"],
+                "summary": "Executive PDF report for a scan",
+                "description": "POST a scan result body (as returned by `/api/scan`) and receive a styled PDF.",
+                "requestBody": {
+                    "required": True,
+                    "content": {"application/json": {"schema": {
+                        "type": "object",
+                        "properties": {
+                            "total": {"type": "integer", "example": 40},
+                            "spam":  {"type": "integer", "example": 18},
+                            "ham":   {"type": "integer", "example": 22},
+                            "spam_rate_pct": {"type": "number", "example": 45.0},
+                            "filename":  {"type": "string", "example": "demo_scan.csv"},
+                            "top_risky": {"type": "array", "items": {"type": "object"}},
+                            "distribution": {"type": "object"},
+                        },
+                    }}},
+                },
+                "responses": {"200": {"description": "PDF binary",
+                                       "content": {"application/pdf": {"schema": {"type": "string", "format": "binary"}}}}},
+            },
+        },
+
+        # --------------------------- Analytics ---------------------------
+        "/api/stats": {
+            "get": {
+                "tags": ["Analytics"],
+                "summary": "Overview KPIs + top domains/senders + weekday distribution",
+                "responses": {"200": _json_resp({
+                    "overview": {"total_emails": 517398, "spam_count": 34521, "ham_count": 482877,
+                                  "spam_rate_pct": 6.67, "avg_word_count": 259.2, "avg_link_count": 1.06},
+                    "top_domains": [{"domain": "enron.com", "total_emails": 410000, "spam_count": 1200, "spam_rate_pct": 0.29}],
+                    "top_senders": [{"email_address": "kay.mann@enron.com", "total_emails": 16000}],
+                    "weekday":     [{"day_name": "Monday", "total_emails": 95000, "spam_count": 4200, "spam_rate_pct": 4.42}],
+                })},
+            },
+        },
+        "/api/drilldown": {
+            "get": {
+                "tags": ["Analytics"],
+                "summary": "Domain or sender detail",
+                "parameters": [
+                    {"name": "type",  "in": "query", "required": True,
+                     "schema": {"type": "string", "enum": ["domain", "sender"]},
+                     "example": "domain"},
+                    {"name": "value", "in": "query", "required": True,
+                     "schema": {"type": "string"},
+                     "example": "enron.com"},
+                ],
+                "responses": {
+                    "200": _json_resp({
+                        "kind": "domain",
+                        "head": {"domain": "enron.com", "total_emails": 410000, "spam_count": 1200,
+                                  "ham_count": 408800, "spam_rate_pct": 0.29, "is_internal": 1},
+                        "top_senders": [{"email_address": "kay.mann@enron.com", "total": 16000, "spam": 5}],
+                        "weekday":     [{"day_name": "Monday", "total": 75000, "spam": 220}],
+                    }),
+                    "404": _json_resp({"error": "enron.com not found"}),
+                },
+            },
+        },
+        "/api/trend": {
+            "get": {
+                "tags": ["Analytics"],
+                "summary": "Monthly email volume + spam rate",
+                "responses": {"200": _json_resp({
+                    "months":     ["2001-01", "2001-02", "2001-03"],
+                    "totals":     [12000, 14500, 17800],
+                    "spam_count": [400, 510, 690],
+                    "spam_rate":  [3.33, 3.52, 3.88],
+                })},
+            },
+        },
+        "/api/anomalies": {
+            "get": {
+                "tags": ["Analytics"],
+                "summary": "Auto-detected anomalies in the warehouse",
+                "responses": {"200": _json_resp({
+                    "anomalies": [{"kind": "domain_spike", "title": "spam spike on egreetings.com",
+                                    "detail": "100% spam over 6 emails", "severity": "high"}],
+                })},
+            },
+        },
+
+        # --------------------------- Assistant ---------------------------
+        "/api/ask": {
+            "post": {
+                "tags": ["Assistant"],
+                "summary": "Natural-language question over the warehouse (Claude text-to-SQL)",
+                "description": (
+                    "Translates the question into SQL via Claude (Haiku), executes it on a read-only "
+                    "SQLite connection, and returns a 1–2 sentence summary plus the result table. "
+                    "Falls back to a regex intent router when the LLM is unavailable."
+                ),
+                "requestBody": {
+                    "required": True,
+                    "content": {"application/json": {"schema": {
+                        "type": "object",
+                        "required": ["question"],
+                        "properties": {"question": {"type": "string",
+                                                      "example": "Compare the average word count of spam emails versus ham emails."}},
+                    }}},
+                },
+                "responses": {
+                    "200": _json_resp({
+                        "backend": "claude",
+                        "sql": "SELECT is_spam, AVG(body_word_count) FROM FactEmail WHERE is_spam IS NOT NULL GROUP BY is_spam LIMIT 20",
+                        "text": "Spam emails are slightly longer on average (4.71 words) than ham emails (4.40 words).",
+                        "table": {"columns": ["is_spam", "avg_word_count"],
+                                   "rows": [["0", "4.40"], ["1", "4.71"]]},
+                    }),
+                },
+            },
+        },
+
+        # --------------------------- Model ---------------------------
+        "/api/model-metrics": {
+            "get": {
+                "tags": ["Model"],
+                "summary": "Confusion matrix, PR/ROC curves, top spam/ham features",
+                "responses": {"200": _json_resp({
+                    "report": {"accuracy": 0.988},
+                    "confusion_matrix": [[3261, 48], [31, 3404]],
+                    "test_size": 6744,
+                    "pr_curve":  {"precision": [1.0, 0.99], "recall": [0.0, 1.0]},
+                    "roc_curve": {"fpr": [0.0, 1.0], "tpr": [0.0, 1.0], "auc": 0.998},
+                    "top_spam_features": [{"word": "prize", "weight": 4.21}],
+                    "top_ham_features":  [{"word": "agreement", "weight": -3.55}],
+                    "n_features": 20000,
+                })},
+            },
+        },
+        "/api/wordcloud": {
+            "get": {
+                "tags": ["Model"],
+                "summary": "Top spam vs ham tokens for the cloud chart",
+                "responses": {"200": _json_resp({
+                    "spam": [{"word": "prize", "weight": 4.21, "size": 22.0}],
+                    "ham":  [{"word": "agreement", "weight": -3.55, "size": 22.0}],
+                })},
+            },
+        },
+
+        # --------------------------- Feedback ---------------------------
+        "/api/feedback": {
+            "post": {
+                "tags": ["Feedback"],
+                "summary": "User feedback on a prediction (used to retrain)",
+                "requestBody": {
+                    "required": True,
+                    "content": {"application/json": {"schema": {
+                        "type": "object",
+                        "required": ["subject", "predicted", "correct_label"],
+                        "properties": {
+                            "subject":       {"type": "string", "example": "Re: Q3 budget"},
+                            "body":          {"type": "string", "example": "Hi Sarah, thanks for sending..."},
+                            "predicted":     {"type": "integer", "enum": [0, 1], "example": 1,
+                                               "description": "What the model predicted (1=spam, 0=ham)"},
+                            "correct_label": {"type": "integer", "enum": [0, 1], "example": 0,
+                                               "description": "What the user says is correct"},
+                            "spam_prob":     {"type": "number", "example": 0.83},
+                        },
+                    }}},
+                },
+                "responses": {"200": _json_resp({"ok": True, "total_feedback": 7})},
+            },
+        },
     },
 }
 
@@ -1076,4 +1377,4 @@ if __name__ == "__main__":
     # Only warm cache in the main process (not in the Werkzeug reloader child twice)
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
         _warm_cache()
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False)

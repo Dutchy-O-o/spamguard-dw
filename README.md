@@ -1,4 +1,12 @@
-# SpamGuard DW
+<p align="center">
+  <img src="webapp/static/logo.png" alt="SpamGuard DW" width="180" />
+</p>
+
+<h1 align="center">SpamGuard DW</h1>
+
+<p align="center">
+  <em>End-to-end Data Warehouse + ML + Dashboard for spam detection</em>
+</p>
 
 [![CI](https://github.com/Dutchy-O-o/spamguard-dw/actions/workflows/ci.yml/badge.svg)](https://github.com/Dutchy-O-o/spamguard-dw/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](https://www.python.org/)
@@ -6,7 +14,7 @@
 [![Model](https://img.shields.io/badge/accuracy-98.8%25-brightgreen)](#model-performance)
 [![License](https://img.shields.io/badge/license-Academic-lightgrey)](#license)
 
-**End-to-end Data Warehouse + ML + Dashboard for spam detection**, built on the Enron email corpus (~517K messages). Dokuz Eylul University graduation project.
+Built on the Enron email corpus (~517K messages). Dokuz Eylul University graduation project.
 
 > Real-world Star-Schema DW · TF-IDF + Multinomial Naive Bayes (98.8% accuracy) · Flask glassmorphic UI · Claude text-to-SQL assistant · PDF executive reports · Secure-by-design architecture.
 

@@ -4,6 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>{% block title %}SpamGuard DW{% endblock %}</title>
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}" />
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='logo.png') }}" />
 
 <!-- Prevent FOUC: set theme BEFORE stylesheet loads. The no-anim class
      blocks any initial transition so the first paint lands on the final look. -->
@@ -24,13 +26,13 @@
 <body>
 
 <header class="nav">
-  <div class="brand">
-    <span class="logo">SG</span>
+  <a href="{{ url_for('index') }}" class="brand">
+    <img class="logo" src="{{ url_for('static', filename='logo.png') }}" alt="SpamGuard DW" />
     <div>
       <h1>SpamGuard <span class="muted">DW</span></h1>
       <p class="muted">Enron Email Warehouse · Spam Detection</p>
     </div>
-  </div>
+  </a>
 
   <nav class="tabs">
     <a href="{{ url_for('index') }}"     class="tab {% if active_tab == 'dashboard' %}active{% endif %}">Dashboard</a>
