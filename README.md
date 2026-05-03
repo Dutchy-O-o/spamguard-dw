@@ -211,21 +211,34 @@ Full spec: `/openapi.json` · Swagger UI at `/docs`.
 
 ## Model Performance
 
-```
-              precision    recall  f1-score
-         ham      0.991     0.985     0.988
-        spam      0.986     0.991     0.989
-    accuracy                          0.988
-ROC AUC                               ~0.998
+Evaluated on a 20% stratified test split of the Metsis Enron-Spam corpus (**6,744 emails**, 3,309 ham + 3,435 spam). Probabilities are **Platt-scaled** (CalibratedClassifierCV, 5-fold) so confidence numbers are calibrated, not raw NB log-odds.
 
-confusion matrix (test set):
-   [[3261    48]     TN  FP
-    [  31  3404]]    FN  TP
-```
+### Classification report
 
-Evaluated on a 20% stratified test split of the Metsis Enron-Spam corpus (6,744 emails).
+| class    | precision | recall  | f1-score | support |
+| -------- | :-------: | :-----: | :------: | :-----: |
+| **ham**  |   0.991   |  0.985  |  0.988   |  3,309  |
+| **spam** |   0.986   |  0.991  |  0.989   |  3,435  |
+| **accuracy** |       |         |  **0.988** |  6,744  |
+| **ROC AUC**  |       |         |  **0.998** |         |
 
-> **Caveat:** Accuracy reflects the Metsis corpus structure (external spam traps vs legitimate Enron business emails). Cross-corpus generalization has not been measured.
+### Confusion matrix
+
+|                | predicted ham | predicted spam |
+| -------------- | :-----------: | :------------: |
+| **actual ham**  | **3,261** (TN) | 48 (FP)        |
+| **actual spam** | 31 (FN)        | **3,404** (TP) |
+
+Only **79 errors out of 6,744** (1.17% error rate) — 48 false positives and 31 false negatives.
+
+### Visual
+
+<p align="center">
+  <img src="docs/figures/fig_confusion.png" alt="Confusion matrix" width="48%" />
+  <img src="docs/figures/fig_roc_pr.png" alt="ROC and PR curves" width="48%" />
+</p>
+
+> **Caveat:** Accuracy reflects the Metsis corpus structure (external spam traps vs legitimate Enron business emails). Cross-corpus generalization on modern marketing newsletters has not been measured — domain shift is the main known limitation.
 
 ---
 
