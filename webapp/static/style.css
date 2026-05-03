@@ -108,10 +108,9 @@ body {
 .tab.active { color: white;
   background: linear-gradient(135deg, var(--accent), var(--accent2));
   box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
-.brand { display: flex; gap: 14px; align-items: center; }
-.logo { width: 44px; height: 44px; border-radius: 12px;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  display: grid; place-items: center; font-weight: 800; color: white; letter-spacing: 0.5px; }
+.brand { display: flex; gap: 14px; align-items: center; text-decoration: none; color: inherit; }
+.logo { width: 44px; height: 44px; object-fit: contain; display: block;
+  filter: drop-shadow(0 2px 6px rgba(34, 211, 238, 0.25)); }
 .nav h1 { font-size: 18px; margin: 0; font-weight: 700; }
 .nav p  { font-size: 12px; margin: 2px 0 0; }
 .muted  { color: var(--text2); font-weight: 400; }

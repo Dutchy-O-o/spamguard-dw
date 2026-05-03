@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 
 import joblib
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
@@ -102,16 +103,34 @@ def load_data():
     return load_from_db()
 
 
+def _vectorizer() -> TfidfVectorizer:
+    return TfidfVectorizer(
+        lowercase=True,
+        ngram_range=(1, 2),
+        min_df=2,
+        max_df=0.95,
+        max_features=20_000,
+        stop_words="english",
+    )
+
+
 def build_pipeline() -> Pipeline:
+    """Calibrated pipeline used for predictions (Platt-scaled probabilities)."""
     return Pipeline([
-        ("tfidf", TfidfVectorizer(
-            lowercase=True,
-            ngram_range=(1, 2),
-            min_df=2,
-            max_df=0.95,
-            max_features=20_000,
-            stop_words="english",
+        ("tfidf", _vectorizer()),
+        ("clf", CalibratedClassifierCV(
+            MultinomialNB(alpha=0.1),
+            method="sigmoid",
+            cv=5,
         )),
+    ])
+
+
+def build_raw_pipeline() -> Pipeline:
+    """Uncalibrated pipeline kept alongside for token-level explanations
+    (`feature_log_prob_` is not exposed by CalibratedClassifierCV)."""
+    return Pipeline([
+        ("tfidf", _vectorizer()),
         ("clf", MultinomialNB(alpha=0.1)),
     ])
 
@@ -128,14 +147,19 @@ def main() -> None:
     pipe.fit(X_tr, y_tr)
 
     y_pred = pipe.predict(X_te)
-    print("\n[ml] --- classification report ---")
+    print("\n[ml] --- classification report (calibrated) ---")
     print(classification_report(y_te, y_pred, target_names=["ham", "spam"], digits=3))
     print("[ml] confusion matrix [[TN FP][FN TP]]:")
     print(confusion_matrix(y_te, y_pred))
 
+    raw_pipe = build_raw_pipeline()
+    raw_pipe.fit(X_tr, y_tr)
+    pipe.explain_pipe_ = raw_pipe
+
     MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(pipe, MODEL_PATH)
     print(f"\n[ml] model saved: {MODEL_PATH}")
+    print("[ml] bundled raw NB pipeline as `explain_pipe_` for token-level explanations")
 
 
 if __name__ == "__main__":
